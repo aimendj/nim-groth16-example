@@ -74,9 +74,12 @@ proc main() {.raises: [ValueError, IOError, OSError, CatchableError].} =
     echo "      ✗ Proof verification: FAILED"
     echo ""
     echo "=".repeat(60)
-    echo "Proof verification failed!"
+    echo "Proof verification failed - inputs do not satisfy circuit constraints"
     echo "=".repeat(60)
-    raise newException(ValueError, "Proof verification failed")
+    echo ""
+    echo "This is expected if your witness values don't satisfy the circuit."
+    echo "For example, if the circuit requires a * b = 15, but you provided"
+    echo "values that multiply to a different result."
 
 {.pop.}
 

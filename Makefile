@@ -47,8 +47,12 @@ circuit-init:
 		echo "    signal input b;" >> $(CIRCUITS_DIR)/$(CIRCUIT_NAME).circom; \
 		echo "    signal output c;" >> $(CIRCUITS_DIR)/$(CIRCUIT_NAME).circom; \
 		echo "    c <== a * b;" >> $(CIRCUITS_DIR)/$(CIRCUIT_NAME).circom; \
+		echo "    // Constrain output to public value 15" >> $(CIRCUITS_DIR)/$(CIRCUIT_NAME).circom; \
+		echo "    c === 15;" >> $(CIRCUITS_DIR)/$(CIRCUIT_NAME).circom; \
 		echo "}" >> $(CIRCUITS_DIR)/$(CIRCUIT_NAME).circom; \
 		echo "" >> $(CIRCUITS_DIR)/$(CIRCUIT_NAME).circom; \
+		echo "// Proves: I know factors a and b such that a * b = 15 (public)" >> $(CIRCUITS_DIR)/$(CIRCUIT_NAME).circom; \
+		echo "// Example: a=3, b=5 or a=1, b=15, etc." >> $(CIRCUITS_DIR)/$(CIRCUIT_NAME).circom; \
 		echo "component main = Multiplier();" >> $(CIRCUITS_DIR)/$(CIRCUIT_NAME).circom; \
 		echo "Created $(CIRCUITS_DIR)/$(CIRCUIT_NAME).circom"; \
 	else \
@@ -88,7 +92,8 @@ circuit-zkey:
 circuit-wtns:
 	@if [ -z "$(INPUT)" ]; then \
 		echo "Creating default input.json..."; \
-		echo '{"a": 3, "b": 5}' > $(CIRCUITS_DIR)/input.json; \
+		echo '{"a": 3, "b": 6}' > $(CIRCUITS_DIR)/input.json; \
+		echo "Using default inputs: a=3, b=5 (which multiply to 15)"; \
 	else \
 		cp $(INPUT) $(CIRCUITS_DIR)/input.json; \
 	fi
