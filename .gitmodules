@@ -1,0 +1,10 @@
+[submodule "nim-groth16"]
+	path = nim-groth16
+	url = https://github.com/durability-labs/nim-groth16
+[submodule "deps/nim-taskpools"]
+	path = deps/nim-taskpools
+	url = https://github.com/status-im/nim-taskpools
+[submodule "deps/constantine"]
+	path = deps/constantine
+	url = https://github.com/durability-labs/constantine
+	branch = v0.2.0-fix-nimble-windows
