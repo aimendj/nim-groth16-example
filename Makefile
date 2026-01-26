@@ -1,16 +1,28 @@
-.PHONY: help setup build run circuit-init circuit-compile circuit-pot circuit-zkey circuit-wtns circuit-all
-
+# Variables
 CIRCUIT_NAME ?= circuit
 CIRCUITS_DIR = circuits
 POT_SIZE ?= 12
 
+# Compiler flags
+NIM_FLAGS = --threads:on --mm:arc --path:nim-groth16 --path:deps/nim-taskpools --path:deps/constantine
+
+# Phony targets
+.PHONY: help setup run-file-prove run-inline-prove \
+        check-tools circuit-init circuit-compile circuit-pot circuit-zkey circuit-wtns circuit-all
+
+# Default target
 help:
 	@echo "Available tasks:"
-	@echo "  make setup                    - Initialize and update submodules"
-	@echo "  make build                    - Build the Nim example"
-	@echo "  make run ZKEY=... WTNS=...   - Run the example with zkey and witness files"
 	@echo ""
-	@echo "Circuit generation (CIRCUIT_NAME=circuit, POT_SIZE=12):"
+	@echo "Setup:"
+	@echo "  make setup                    - Initialize and update submodules"
+	@echo ""
+	@echo "Run:"
+	@echo "  make run-file-prove ZKEY=... WTNS=... - Run the file-based example (uses circom/snarkjs files)"
+	@echo "  make run-inline-prove A=... B=... [ZKEY=...] - Run the programmatic proof generation example"
+	@echo ""
+	@echo "Circuit generation (CIRCUIT_NAME=$(CIRCUIT_NAME), POT_SIZE=$(POT_SIZE)):"
+	@echo "  Note: Requires circom and snarkjs (install with: npm install -g circom snarkjs)"
 	@echo "  make circuit-init            - Create example circuit.circom file"
 	@echo "  make circuit-compile         - Compile .circom to .r1cs and .wasm"
 	@echo "  make circuit-pot              - Generate powers-of-tau file"
@@ -18,6 +30,7 @@ help:
 	@echo "  make circuit-wtns INPUT=...  - Generate .wtns file (requires .wasm and input.json)"
 	@echo "  make circuit-all             - Run all circuit generation steps"
 
+# Setup
 setup:
 	@echo "Setting up submodules..."
 	git submodule update --init --recursive
@@ -25,18 +38,36 @@ setup:
 	cd deps/constantine && git checkout v0.2.0-fix-nimble-windows 2>/dev/null || true
 	@echo "Submodules setup complete!"
 
-build:
-	@echo "Building Nim example..."
-	nim c --threads:on --mm:arc --path:nim-groth16 --path:deps/nim-taskpools --path:deps/constantine src/example.nim
-	@echo "Build complete!"
-
-run:
+# Run
+run-file-prove:
 	@if [ -z "$(ZKEY)" ] || [ -z "$(WTNS)" ]; then \
-		echo "Usage: make run ZKEY=<zkey_file> WTNS=<witness_file>"; \
+		echo "Usage: make run-file-prove ZKEY=<zkey_file> WTNS=<witness_file>"; \
 		exit 1; \
 	fi
-	@echo "Running example with $(ZKEY) and $(WTNS)..."
-	nim c -r --threads:on --mm:arc --path:nim-groth16 --path:deps/nim-taskpools --path:deps/constantine src/example.nim $(ZKEY) $(WTNS)
+	@echo "Running file-based example with $(ZKEY) and $(WTNS)..."
+	nim c -r $(NIM_FLAGS) src/file_prove.nim $(ZKEY) $(WTNS)
+
+run-inline-prove:
+	@if [ -z "$(A)" ] || [ -z "$(B)" ]; then \
+		echo "Usage: make run-inline-prove A=<a_value> B=<b_value> [ZKEY=<zkey_file>]"; \
+		echo "  where a * b = 15"; \
+		echo "  ZKEY is optional - if provided, uses real zkey; otherwise uses fake setup"; \
+		exit 1; \
+	fi
+	@if [ -n "$(ZKEY)" ]; then \
+		echo "Generating and validating proof with a=$(A), b=$(B), zkey=$(ZKEY)..."; \
+		nim c -r $(NIM_FLAGS) src/inline_prove.nim $(A) $(B) $(ZKEY); \
+	else \
+		echo "Generating and validating proof with a=$(A), b=$(B) (using fake setup)..."; \
+		nim c -r $(NIM_FLAGS) src/inline_prove.nim $(A) $(B); \
+	fi
+
+# Circuit generation
+# Check for required tools
+check-tools:
+	@command -v circom >/dev/null 2>&1 || { echo "Error: circom is not installed. Install with: npm install -g circom"; exit 1; }
+	@command -v snarkjs >/dev/null 2>&1 || { echo "Error: snarkjs is not installed. Install with: npm install -g snarkjs"; exit 1; }
+	@echo "✓ circom and snarkjs are installed"
 
 circuit-init:
 	@echo "Creating example circuit file..."
@@ -59,13 +90,13 @@ circuit-init:
 		echo "$(CIRCUITS_DIR)/$(CIRCUIT_NAME).circom already exists, skipping"; \
 	fi
 
-circuit-compile:
+circuit-compile: check-tools
 	@echo "Compiling circuit..."
 	@mkdir -p $(CIRCUITS_DIR)
 	@cd $(CIRCUITS_DIR) && circom $(CIRCUIT_NAME).circom --r1cs --wasm
 	@echo "Created $(CIRCUITS_DIR)/$(CIRCUIT_NAME).r1cs and $(CIRCUITS_DIR)/$(CIRCUIT_NAME).wasm"
 
-circuit-pot:
+circuit-pot: check-tools
 	@echo "Generating powers-of-tau (size: $(POT_SIZE))..."
 	@mkdir -p $(CIRCUITS_DIR)
 	@cd $(CIRCUITS_DIR) && \
@@ -79,7 +110,7 @@ circuit-pot:
 		mv pot_final.ptau pot.ptau
 	@echo "Created $(CIRCUITS_DIR)/pot.ptau"
 
-circuit-zkey:
+circuit-zkey: check-tools
 	@echo "Generating .zkey file..."
 	@cd $(CIRCUITS_DIR) && \
 		snarkjs groth16 setup $(CIRCUIT_NAME).r1cs pot.ptau $(CIRCUIT_NAME)_0000.zkey && \
@@ -89,10 +120,10 @@ circuit-zkey:
 		rm -f $(CIRCUIT_NAME)_0000.zkey $(CIRCUIT_NAME)_0001.zkey $(CIRCUIT_NAME)_0002.zkey
 	@echo "Created $(CIRCUITS_DIR)/$(CIRCUIT_NAME).zkey"
 
-circuit-wtns:
+circuit-wtns: check-tools
 	@if [ -z "$(INPUT)" ]; then \
 		echo "Creating default input.json..."; \
-		echo '{"a": 3, "b": 6}' > $(CIRCUITS_DIR)/input.json; \
+		echo '{"a": 3, "b": 5}' > $(CIRCUITS_DIR)/input.json; \
 		echo "Using default inputs: a=3, b=5 (which multiply to 15)"; \
 	else \
 		cp $(INPUT) $(CIRCUITS_DIR)/input.json; \
@@ -104,4 +135,4 @@ circuit-wtns:
 circuit-all: circuit-init circuit-compile circuit-pot circuit-zkey circuit-wtns
 	@echo ""
 	@echo "Circuit files ready! Run with:"
-	@echo "  make run ZKEY=$(CIRCUITS_DIR)/$(CIRCUIT_NAME).zkey WTNS=$(CIRCUITS_DIR)/$(CIRCUIT_NAME).wtns"
+	@echo "  make run-file-prove ZKEY=$(CIRCUITS_DIR)/$(CIRCUIT_NAME).zkey WTNS=$(CIRCUITS_DIR)/$(CIRCUIT_NAME).wtns"

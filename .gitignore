@@ -1,2 +1,3 @@
-src/example
 circuits/
+src/inline_prove
+src/file_prove
