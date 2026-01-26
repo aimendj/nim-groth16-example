@@ -1,6 +1,6 @@
 ## Generate and validate Groth16 proof programmatically
 
-{.push raises: [CatchableError].}
+{.push raises: [].}
 
 import std/[strutils, os]
 import taskpools

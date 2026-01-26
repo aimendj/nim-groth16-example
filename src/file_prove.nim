@@ -1,6 +1,6 @@
 ## File-based Groth16 proof example
 
-{.push raises: [ValueError, IOError, OSError, CatchableError].}
+{.push raises: [].}
 
 import std/[os, strutils]
 import taskpools
@@ -10,7 +10,7 @@ import groth16/files/witness
 import groth16/files/zkey
 import groth16/zkey_types
 
-proc main() {.raises: [ValueError, IOError, OSError, CatchableError].} =
+proc main() {.raises: [CatchableError].} =
   if paramCount() < 2:
     raise newException(
       ValueError,
