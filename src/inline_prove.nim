@@ -17,31 +17,32 @@ proc main() {.raises: [CatchableError].} =
   if paramCount() < 2:
     echo "Usage: ", getAppFilename(), " <a> <b> [zkey_file]"
     echo "  where a * b = 15"
-    echo "  zkey_file is optional - if provided, uses real zkey; otherwise uses fake setup"
+    echo "  zkey_file is optional - if provided, uses real zkey;"
+    echo "  otherwise uses fake setup"
     quit(1)
-  
+
   var a: int
   var b: int
-  
+
   try:
     a = parseInt(paramStr(1))
   except ValueError:
     echo "Error: invalid value for a: ", paramStr(1)
     quit(1)
-  
+
   try:
     b = parseInt(paramStr(2))
   except ValueError:
     echo "Error: invalid value for b: ", paramStr(2)
     quit(1)
-  
+
   let zkeyFile = if paramCount() >= 3: paramStr(3) else: ""
-  
+
   echo "=".repeat(60)
   echo "Generate and Validate Groth16 Proof"
   echo "=".repeat(60)
   echo ""
-  
+
   const witnessCfg = WitnessConfig(
     nWires: 4,
     nPubOut: 1,
@@ -49,13 +50,13 @@ proc main() {.raises: [CatchableError].} =
     nPrivIn: 2,
     nLabels: 0
   )
-  
+
   const constraint1: Constraint = (
     A: @[(wireIdx: 2, value: oneFr)],
     B: @[(wireIdx: 3, value: oneFr)],
     C: @[(wireIdx: 1, value: oneFr)]
   )
-  
+
   let fifteen = intToFr(15)
   let minus15 = negFr(fifteen)
   let constraint2: Constraint = (
@@ -63,9 +64,9 @@ proc main() {.raises: [CatchableError].} =
     B: @[],
     C: @[(wireIdx: 1, value: oneFr), (wireIdx: 0, value: minus15)]
   )
-  
+
   let constraints = @[constraint1, constraint2]
-  
+
   let r1cs = R1CS(
     r: primeR,
     cfg: witnessCfg,
@@ -73,31 +74,31 @@ proc main() {.raises: [CatchableError].} =
     constraints: constraints,
     wireToLabel: @[]
   )
-  
+
   echo "[1/4] Creating R1CS circuit programmatically..."
   echo "      Circuit: prove you know factors a and b such that a * b = 15"
   echo "      Constraints: ", r1cs.nConstr
   echo ""
-  
+
   let witnessValues = @[
     intToFr(1),
     intToFr(a * b),
     intToFr(a),
     intToFr(b)
   ]
-  
+
   let witness = Witness(
     curve: "bn128",
     r: primeR,
     nvars: witnessValues.len,
     values: witnessValues
   )
-  
+
   echo "[2/4] Creating witness programmatically..."
   echo "      Inputs: a = ", a, ", b = ", b
   echo "      Output: c = ", a * b
   echo ""
-  
+
   echo "[3/4] Setting up proving key..."
   let zkey = if zkeyFile != "":
     if not fileExists(zkeyFile):
@@ -106,18 +107,18 @@ proc main() {.raises: [CatchableError].} =
     parseZKey(zkeyFile)
   else:
     echo "      Performing fake trusted setup..."
-    createFakeCircuitSetup(r1cs, flavour=Snarkjs)
+    createFakeCircuitSetup(r1cs, flavour = Snarkjs)
   echo "      ✓ Proving key ready"
   echo ""
-  
+
   echo "[4/4] Generating and verifying proof..."
   var pool = Taskpool.new()
   let proof = generateProof(zkey, witness, pool)
   pool.shutdown()
-  
+
   let vkey = extractVKey(zkey)
   let isValid = verifyProof(vkey, proof)
-  
+
   if isValid:
     echo "      ✓ Proof verification: SUCCESS"
     echo ""
@@ -125,7 +126,8 @@ proc main() {.raises: [CatchableError].} =
     echo "Proof is valid!"
     echo "=".repeat(60)
     echo ""
-    echo "Successfully proved knowledge of factors ", a, " and ", b, " such that ", a, " * ", b, " = ", a * b
+    echo "Successfully proved knowledge of factors ", a, " and ", b,
+         " such that ", a, " * ", b, " = ", a * b
   else:
     echo "      ✗ Proof verification: FAILED"
     echo ""
