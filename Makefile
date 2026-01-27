@@ -34,8 +34,15 @@ help:
 setup:
 	@echo "Setting up submodules..."
 	git submodule update --init --recursive
-	@echo "Checking out constantine branch..."
-	cd deps/constantine && git checkout v0.2.0-fix-nimble-windows 2>/dev/null || true
+	@echo "Checking out specified versions from .gitmodules..."
+	@cd nim-groth16 && git checkout master && git pull origin master
+	@cd deps/nim-taskpools && \
+		VERSION=$$(grep -A3 '\[submodule "deps/nim-taskpools"\]' $(CURDIR)/.gitmodules | grep 'version =' | sed 's/.*= \(.*\)/\1/') && \
+		git fetch --tags && \
+		git checkout $$VERSION
+	@cd deps/constantine && \
+		COMMIT=$$(grep -A3 '\[submodule "deps/constantine"\]' $(CURDIR)/.gitmodules | grep 'commit =' | sed 's/.*= \(.*\)/\1/') && \
+		git checkout $$COMMIT
 	@echo "Submodules setup complete!"
 
 # Run
